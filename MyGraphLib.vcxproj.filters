@@ -15,12 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="GraphVertex.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
-    <ClCompile Include="GraphEdge.cpp">
-      <Filter>Quelldateien</Filter>
-    </ClCompile>
     <ClCompile Include="DisjointSet.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
@@ -36,12 +30,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MyGraph.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="GraphVertex.h">
-      <Filter>Headerdateien</Filter>
-    </ClInclude>
-    <ClInclude Include="GraphEdge.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
     <ClInclude Include="DisjointSet.h">
