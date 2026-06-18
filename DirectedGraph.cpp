@@ -1,5 +1,13 @@
 #include "DirectedGraph.h"
 
+DirectedGraph::DirectedGraph() {
+	vertexCount = 0;
+	isConnected = true;
+	hasNegativeVals = false;
+	edges = vector<WeighedEdge>();
+	adjacencyList = vector<vector<int>>();
+}
+
 DirectedGraph::DirectedGraph(string inputDir) {
 	isConnected = true;
 	hasNegativeVals = false;
@@ -34,9 +42,9 @@ DirectedGraph::DirectedGraph(string inputDir) {
 		if (!hasNegativeVals && weight < 0)
 			hasNegativeVals = true;
 
-		if (!vertices[from]) 
+		if (!vertices[from])
 			vertices[from] = true;
-		if (!vertices[to]) 
+		if (!vertices[to])
 			vertices[to] = true;
 
 		//Set Edges
@@ -62,7 +70,7 @@ MyGraph<WeighedEdge>::AdjacencyListInfo DirectedGraph::getAdjacencyListInfo(int 
 	int e = adjacencyList[vertex][adjacencyListID];
 
 	if (e == -1)
-		return AdjacencyListInfo(-1, {0, 0, 0});
+		return AdjacencyListInfo(-1, { 0, 0, 0 });
 
 	adj.edge = edges[e];
 	adj.neighbour = adj.edge.to;
@@ -85,6 +93,21 @@ int DirectedGraph::addEdge(const WeighedEdge edge) {
 	int id = edges.size() - 1;
 
 	this->adjacencyList[v1].push_back(id);
+
+	return id;
+}
+
+int DirectedGraph::addEdge(WeighedEdge* edge) {
+	for (int e = 0; e < edges.size(); e++) {
+		if (edges[e] == *edge) {
+			return e;
+		}
+	}
+
+	edges.push_back(*edge);
+	int id = edges.size() - 1;
+
+	this->adjacencyList[edge->from].push_back(id);
 
 	return id;
 }
@@ -198,4 +221,46 @@ double DirectedGraph::mooreBellmanFordAlg(int start, int end) {
 	}
 
 	return dist[end];
+}
+
+//-----------------------------------------------------------------------------------------------------P5
+
+DirectedGraph* DirectedGraph::makeResidualGraph(vector<double> flow) {
+	if (flow.size() != edges.size()) {
+		cerr << "Flow doesn't fit to Graph!" << endl;
+		return nullptr;
+	}
+
+	DirectedGraph* residualGraph = new DirectedGraph();
+	residualGraph->setVertexCount(vertexCount);
+
+	for (int e = 0; e < edges.size(); e++) {
+		WeighedEdge edge = edges[e];
+		double backward = flow[e], forward = edge.weight - backward;
+
+		if (forward != 0)
+			residualGraph->addEdge({ edge.from, edge.to, forward });
+		if (backward != 0)
+			residualGraph->addEdge({ edge.to, edge.from, backward });
+	}
+
+	return residualGraph;
+}
+
+double DirectedGraph::EdmondsKarpAlg(int start, int end) {
+	if (start < 0 || start >= vertexCount || end < 0 || end >= vertexCount)
+	{
+		cerr << "No such Vertex found!" << endl;
+		return -1;
+	}
+	if (!isConnected) {
+		cerr << "Graph is not connected!" << endl;
+		return -1;
+	}
+
+	double maxFlow = 0;
+	vector<double> flow(edges.size(), 0);
+
+
+	DirectedGraph* residualGraph = makeResidualGraph(flow);
 }

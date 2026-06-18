@@ -96,9 +96,9 @@ public:
 		do
 		{
 
-			if (!vertices[from]) 
+			if (!vertices[from])
 				vertices[from] = true;
-			if (!vertices[to]) 
+			if (!vertices[to])
 				vertices[to] = true;
 
 			//Set Edges
@@ -156,18 +156,19 @@ public:
 
 	//------------------------------------------------------------P1
 
-	void bfs(int start, vector<bool>& visited) {
-		//start exists
+	bool bfs(int start, vector<bool>& visited, int end = -1, deque<int>* path = nullptr) {
 		if (start < 0 || start >= vertexCount)
 		{
 			cerr << "No such Vertex found!" << endl;
-			return;
+			return false;
 		}
 
 		//init
 		queue<int> vertQueue;
 		vertQueue.push(start);
 		visited[start] = true;
+		vector<int> pred(vertexCount, -1);
+		pred[start] = start;
 
 		while (!vertQueue.empty()) {
 			//take first vertex
@@ -179,13 +180,26 @@ public:
 				auto next = getAdjacencyListInfo(v, n);
 
 				if (next.neighbour != -1 && !visited[next.neighbour]) {
-
 					visited[next.neighbour] = true;
 					vertQueue.push(next.neighbour);
+					pred[next.neighbour] = v;
+
+					if (next.neighbour == end)
+						break;
 				}
 
 			}
 		}
+
+		if (end != -1 && pred[end] != -1 && path) {
+			for (int v = end; v != start; v = pred[v])
+			{
+				path->push_front(v);
+			}
+			path->push_front(start);
+			return true;
+		}
+		return false;
 	}
 
 	int zusammenhagsKomp() {
