@@ -261,6 +261,47 @@ double DirectedGraph::EdmondsKarpAlg(int start, int end) {
 	double maxFlow = 0;
 	vector<double> flow(edges.size(), 0);
 
-
 	DirectedGraph* residualGraph = makeResidualGraph(flow);
+	vector<int> pathEdge(vertexCount, -1);
+
+	//st-Weg in p, solange es einen gibt
+	while (residualGraph->bfs(start, pathEdge, end)) {
+
+		double minFlow = numeric_limits<double>::infinity();
+		vector<int> path;
+
+		for (int p = end; p != start; p = residualGraph->edges[pathEdge[p]].from) {
+			WeighedEdge edge = residualGraph->edges[pathEdge[p]];
+			int edgeID = -1;
+
+			//find the corresponding edge in current Graph
+			for (auto a : adjacencyList[edge.from]) {
+				if (edges[a].to == p)
+					edgeID = a;
+			}
+			if (edgeID == -1) {
+				for (auto a : adjacencyList[edge.to]) {
+					if (edges[a].to == p)
+						edgeID = -a;
+				}
+			}
+			path.push_back(edgeID);
+
+			//find smallest capacity in path
+			if (edge.weight < minFlow)
+				minFlow = edge.weight;
+		}
+
+		for (int s : path) {
+			if (s >= 0)
+				flow[s] += minFlow;
+			else
+				flow[-s] -= minFlow;
+		}
+
+		maxFlow += minFlow;
+		residualGraph = makeResidualGraph(flow);
+		fill(pathEdge.begin(), pathEdge.end(), -1);
+	}
+	return maxFlow;
 }

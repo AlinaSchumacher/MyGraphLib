@@ -156,7 +156,7 @@ public:
 
 	//------------------------------------------------------------P1
 
-	bool bfs(int start, vector<bool>& visited, int end = -1, deque<int>* path = nullptr) {
+	bool bfs(int start, vector<int>& pathEdge, int end = -1) {
 		if (start < 0 || start >= vertexCount)
 		{
 			cerr << "No such Vertex found!" << endl;
@@ -166,9 +166,7 @@ public:
 		//init
 		queue<int> vertQueue;
 		vertQueue.push(start);
-		visited[start] = true;
-		vector<int> pred(vertexCount, -1);
-		pred[start] = start;
+		pathEdge[start] = -2;
 
 		while (!vertQueue.empty()) {
 			//take first vertex
@@ -179,37 +177,28 @@ public:
 				//neighbor not visited, add to queue
 				auto next = getAdjacencyListInfo(v, n);
 
-				if (next.neighbour != -1 && !visited[next.neighbour]) {
-					visited[next.neighbour] = true;
+				if (next.neighbour != -1 && pathEdge[next.neighbour] == -1) {
 					vertQueue.push(next.neighbour);
-					pred[next.neighbour] = v;
+					pathEdge[next.neighbour] = adjacencyList[v][n];
 
 					if (next.neighbour == end)
-						break;
+						return true;
 				}
 
 			}
 		}
 
-		if (end != -1 && pred[end] != -1 && path) {
-			for (int v = end; v != start; v = pred[v])
-			{
-				path->push_front(v);
-			}
-			path->push_front(start);
-			return true;
-		}
 		return false;
 	}
 
 	int zusammenhagsKomp() {
 		//init
 		int zsmhgsKmp = 0;
-		vector<bool> visited(vertexCount, false);
+		vector<int> visited(vertexCount, -1);
 
 		for (int v = 0; v < vertexCount; v++) {
 			//if vertex not visited, do bfs
-			if (!visited[v]) {
+			if (visited[v] == -1) {
 				bfs(v, visited);
 				zsmhgsKmp++;
 			}
