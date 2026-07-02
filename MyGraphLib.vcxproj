@@ -130,12 +130,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CompleteGraph.cpp" />
+    <ClCompile Include="CostGraph.cpp" />
     <ClCompile Include="DirectedGraph.cpp" />
     <ClCompile Include="DisjointSet.cpp" />
     <ClCompile Include="WeighedGraph.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CompleteGraph.h" />
+    <ClInclude Include="CostGraph.h" />
     <ClInclude Include="DirectedGraph.h" />
     <ClInclude Include="DisjointSet.h" />
     <ClInclude Include="MyGraph.h" />
