@@ -9,7 +9,7 @@ struct CostEdge : public Edge {
 	double capacity;
 
 	bool operator==(const CostEdge& other) const {
-		return this->from == other.from && this->to == other.to && this->capacity == other.capacity && this->cost == other.cost;
+		return this->from == other.from && this->to == other.to && this->cost == other.cost;
 	}
 };
 
@@ -19,10 +19,16 @@ protected:
 	vector<double> balances;
 	AdjacencyListInfo getAdjacencyListInfo(int vertex, int adjacencyListID);
 public:
-	CostGraph() {}
+	CostGraph();
 	CostGraph(string inputDir);
 	int addEdge(const CostEdge edge);
+	void addBalances(const vector<double>& balances);
 	//------------------------------------------------------------P6
-	double CycleCancelingAlg();
+	vector<int> mooreBellmanFordAlg();
+	CostGraph* makeResidualGraph(vector<double> flow);
+	double EdmondsKarpAlg(int start, int end, vector<double>* flow = nullptr);
+	vector<double> findBFlow();
+	vector<double> CycleCancelingAlg();
+	double getCost(vector<double>& flow);
 };
 
