@@ -18,7 +18,6 @@ public:
 	double mooreBellmanFordAlg(int start, int end);
 	//------------------------------------------------------------P5
 	DirectedGraph* makeResidualGraph(vector<double> flow);
-	bool stFlowBFS(int start, int end);
 	double EdmondsKarpAlg(int start, int end);
 };
 

@@ -114,15 +114,29 @@ int CostGraph::addEdge(const CostEdge edge) {
 
 //-----------------------------------------------------------------------------------------------------P6
 
-vector<int> CostGraph::mooreBellmanFordAlg() {
-	if (!isConnected) {
-		cerr << "Graph is not connected!" << endl;
-		return {};
-	}
-
+/*
+* Eingabe:
+*	int start:					Ausgangs-vertex (optional, keine Angabe = -1)
+*	int end:					End-vertex (optional, falls speziell gesucht; keine Angabe = -1)
+*	vector<double>* distances:	Liste der Erreichbarkeits-kosten aller Vertices (optional, keine Angabe = nullptr)
+*	vector<int>* path:
+*								falls zykel vorhanden:			kanten des negativen Zykels (optional, keine Angabe = nullptr)
+*								sonst:	falls end vorhanden:	kanten des Pfades von end zu start (optional, keine Angabe = nullptr)
+* Ausgabe:
+*	true:						kein Zykel/ end gefunden
+*	false:						Zykel gefunden
+*/
+bool CostGraph::mooreBellmanFordAlg(int start, int end, vector<double>* distances, vector<int>* path) {
 	//Init
 	vector<int> pred(vertexCount, -1);
-	vector<double> dist(vertexCount, 0);
+	vector<double> dist = vector<double>(vertexCount, (start != -1) ? numeric_limits<double>::infinity() : 0);
+	bool finish = false;
+
+	if (start != -1)
+	{
+		pred[start] = -1;
+		dist[start] = 0;
+	}
 
 	//V - 1 durchlaeufe
 	for (int i = 0; i < vertexCount - 1; i++) {
@@ -136,38 +150,62 @@ vector<int> CostGraph::mooreBellmanFordAlg() {
 
 			double c = dist[from] + cost;
 			if (c < dist[to]) {
+				pred[to] = e;
 				dist[to] = c;
-				pred[to] = from;
 
 				change = true;
 			}
 		}
-	}
 
-	for (int e = 0; e < edges.size(); e++) {
-		CostEdge edge = edges[e];
-		int from = edge.from, to = edge.to;
-		double cost = edge.cost;
-		double w = dist[from] + cost;
-
-		if (w < dist[to]) {
-			int x = to;
-			for (int i = 0; i < vertexCount; i++) {
-				x = pred[x];
-			}
-			int start = x;
-			vector<int> z = { start };
-			int current = pred[start];
-			while (current != start) {
-				z.push_back(current);
-				current = pred[current];
-			}
-			z.push_back(start);
-			return z;
+		//early stop
+		if (!change)
+		{
+			finish = true;
+			break;
 		}
 	}
 
-	return {};
+	if (distances)
+		*distances = dist;
+
+	if (!finish)
+		for (int e = 0; e < edges.size(); e++) {
+			CostEdge edge = edges[e];
+			int from = edge.from, to = edge.to;
+			double cost = edge.cost;
+			double w = dist[from] + cost;
+
+			if (w < dist[to]) {
+				int x = to;
+				for (int i = 0; i < vertexCount; i++) {
+					//x = pred[x];
+					x = edges[pred[x]].from;
+				}
+				vector<int> z = { pred[x] };
+				int current = edges[pred[x]].from;
+				while (current != x) {
+					z.push_back(pred[current]);
+					current = edges[pred[current]].from;
+				}
+
+				//return cycle
+				if (path)
+					*path = z;
+				return false;
+			}
+		}
+
+	if (end != -1 && path) {
+		vector<int> p = { pred[end] };
+		int current = edges[pred[end]].from;
+		while (current != start) {
+			p.push_back(pred[current]);
+			current = edges[pred[current]].from;
+		}
+		*path = p;
+	}
+	//return path
+	return true;
 }
 
 CostGraph* CostGraph::makeResidualGraph(vector<double> flow) {
@@ -199,10 +237,6 @@ double CostGraph::EdmondsKarpAlg(int start, int end, vector<double>* mflow) {
 		cerr << "No such Vertex found!" << endl;
 		return -1;
 	}
-	if (!isConnected) {
-		cerr << "Graph is not connected!" << endl;
-		return -1;
-	}
 
 	double maxFlow = 0;
 	vector<double> flow(edges.size(), 0);
@@ -214,23 +248,27 @@ double CostGraph::EdmondsKarpAlg(int start, int end, vector<double>* mflow) {
 	while (residualGraph->bfs(start, pathEdge, end)) {
 
 		double minFlow = numeric_limits<double>::infinity();
-		vector<int> path;
+		vector<tuple<int, int>> path;
 
 		for (int p = end; p != start; p = residualGraph->edges[pathEdge[p]].from) {
 			CostEdge edge = residualGraph->edges[pathEdge[p]];
-			int edgeID = -1;
+			tuple<int, int> edgeID = make_tuple(-1, 0);
 
 			//find the corresponding edge in current Graph
+			// normal flow edge ids
 			for (auto a : adjacencyList[edge.from]) {
 				if (edges[a].to == p)
-					edgeID = a;
+					edgeID = make_tuple(a, 1);
 			}
-			if (edgeID == -1) {
+
+			// residual edge ids
+			if (get<1>(edgeID) == -1) {
 				for (auto a : adjacencyList[edge.to]) {
 					if (edges[a].to == p)
-						edgeID = -a;
+						edgeID = make_tuple(a, -1);
 				}
 			}
+
 			path.push_back(edgeID);
 
 			//find smallest capacity in path
@@ -238,29 +276,31 @@ double CostGraph::EdmondsKarpAlg(int start, int end, vector<double>* mflow) {
 				minFlow = edge.capacity;
 		}
 
-		for (int s : path) {
-			if (s >= 0)
-				flow[s] += minFlow;
+		for (auto s : path) {
+			int id, res;
+			tie(id, res) = s;
+			if (res > 0)
+				flow[id] += minFlow;
+			else if (res < 0)
+				flow[id] -= minFlow;
 			else
-				flow[-s] -= minFlow;
+				return -1;
 		}
 
 		maxFlow += minFlow;
 		residualGraph = makeResidualGraph(flow);
-		fill(pathEdge.begin(), pathEdge.end(), -1);
+		std::fill(pathEdge.begin(), pathEdge.end(), -1);
 	}
 	if (mflow)
 	{
-		for (int f = 0; f < mflow->size(); f++) {
-			mflow->at(f) = flow[f];
-		}
+		*mflow = flow;
 	}
 	return maxFlow;
 }
 
 vector<double> CostGraph::findBFlow()
 {
-	vector<double> flow(edges.size(), 0);
+	vector<double> flow;
 
 	int source = vertexCount;
 	int sink = vertexCount + 1;
@@ -298,6 +338,11 @@ vector<double> CostGraph::findBFlow()
 		return {};
 	}
 
+	//trim excess
+	for (int f = flow.size(); f > edges.size(); f--) {
+		flow.pop_back();
+	}
+
 	return flow;
 }
 
@@ -319,9 +364,8 @@ vector<double> CostGraph::CycleCancelingAlg() {
 
 	do {
 		CostGraph* residualGraph = makeResidualGraph(flow);
-		cycle = residualGraph->mooreBellmanFordAlg();
 
-		if (cycle.empty())
+		if (residualGraph->mooreBellmanFordAlg(-1, -1, nullptr, &cycle))
 			return flow;
 
 		// kleinste Restkapazität auf dem Zyklus
@@ -329,46 +373,25 @@ vector<double> CostGraph::CycleCancelingAlg() {
 
 		vector<int> edgeIDs;
 
-		for (int i = cycle.size() - 1; i > 0 ; i--)
+		for (int i = cycle.size() - 1; i >= 0; i--)
 		{
-			int u = cycle[i];
-			int v = cycle[i - 1];
+			edgeIDs.push_back(cycle[i]);
 
-			int edgeID = -1;
-
-			for (int e : residualGraph->adjacencyList[u])
-			{
-				if (residualGraph->edges[e].to == v)
-				{
-					edgeID = e;
-					break;
-				}
-			}
-
-			if (edgeID == -1)
-			{
-				cerr << "Cycle edge not found!" << endl;
-				return {};
-			}
-
-			edgeIDs.push_back(edgeID);
-
-			delta = min(delta, residualGraph->edges[edgeID].capacity);
+			delta = min(delta, residualGraph->edges[cycle[i]].capacity);
 		}
 
 		// Flow anpassen
-		for (int rEdgeID : edgeIDs)
+		for (int edgeID : cycle)
 		{
-			CostEdge rEdge = residualGraph->edges[rEdgeID];
-
+			CostEdge edge = residualGraph->edges[edgeID];
 			bool found = false;
 
 			// Vorwaertskante?
 			for (int i = 0; i < edges.size(); i++)
 			{
-				if (edges[i].from == rEdge.from &&
-					edges[i].to == rEdge.to &&
-					edges[i].cost == rEdge.cost)
+				if (edges[i].from == edge.from &&
+					edges[i].to == edge.to &&
+					edges[i].cost == edge.cost)
 				{
 					flow[i] += delta;
 					found = true;
@@ -381,9 +404,9 @@ vector<double> CostGraph::CycleCancelingAlg() {
 				// Rückwärtskante
 				for (int i = 0; i < edges.size(); i++)
 				{
-					if (edges[i].from == rEdge.to &&
-						edges[i].to == rEdge.from &&
-						edges[i].cost == -rEdge.cost)
+					if (edges[i].from == edge.to &&
+						edges[i].to == edge.from &&
+						edges[i].cost == -edge.cost)
 					{
 						flow[i] -= delta;
 						break;
@@ -394,6 +417,10 @@ vector<double> CostGraph::CycleCancelingAlg() {
 	} while (!cycle.empty());
 
 	return flow;
+}
+
+vector<double> CostGraph::successiveShortestPathAlg() {
+	return { -1 };
 }
 
 double CostGraph::getCost(vector<double>& flow) {

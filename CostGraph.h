@@ -24,11 +24,12 @@ public:
 	int addEdge(const CostEdge edge);
 	void addBalances(const vector<double>& balances);
 	//------------------------------------------------------------P6
-	vector<int> mooreBellmanFordAlg();
+	bool mooreBellmanFordAlg(int start = -1, int end = -1, vector<double>* distances = nullptr, vector<int>* path = nullptr);
 	CostGraph* makeResidualGraph(vector<double> flow);
 	double EdmondsKarpAlg(int start, int end, vector<double>* flow = nullptr);
 	vector<double> findBFlow();
 	vector<double> CycleCancelingAlg();
 	double getCost(vector<double>& flow);
+	vector<double> successiveShortestPathAlg();
 };
 
