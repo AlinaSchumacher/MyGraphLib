@@ -3,6 +3,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="../UnitTest/UnitTest.vcxproj" />
   <Project Path="MyGraphLib.vcxproj" Id="ca09c682-a174-47bc-a760-af4760a09e93" />
+  <Project Path="MyGraphlibTest/MyGraphlibTest.vcxproj" />
 </Solution>
