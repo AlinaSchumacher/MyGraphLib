@@ -196,6 +196,9 @@ bool CostGraph::mooreBellmanFordAlg(int start, int end, vector<double>* distance
 		}
 
 	if (end != -1 && path) {
+		if (dist[end] == numeric_limits<double>::infinity())
+			return false;
+
 		vector<int> p = { pred[end] };
 		int current = edges[pred[end]].from;
 		while (current != start) {
@@ -308,12 +311,13 @@ vector<double> CostGraph::findBFlow()
 	CostGraph g;
 
 	g.setVertexCount(vertexCount + 2);
+	g.addBalances(balances);
 
 	// ursprüngliche Kanten übernehmen
 	for (const auto& e : edges)
 		g.addEdge(e);
 
-	double demand = 0;
+	double supply = 0, demand = 0;
 
 	// Super-Quelle und Super-Senke
 	for (int v = 0; v < vertexCount; ++v)
@@ -321,19 +325,27 @@ vector<double> CostGraph::findBFlow()
 		if (balances[v] > 0)
 		{
 			g.addEdge({ source, v, 0, balances[v] });
-			demand += balances[v];
+			supply += balances[v];
 		}
 		else if (balances[v] < 0)
 		{
 			g.addEdge({ v, sink, 0, -balances[v] });
+			demand -= balances[v];
 		}
+	}
+
+	// b(s) == b(t)?
+	if (supply != demand)
+	{
+		cerr << "Kein zulässiger b-Flow vorhanden." << endl;
+		return {};
 	}
 
 	// Maxflow berechnen
 	double maxFlow = g.EdmondsKarpAlg(source, sink, &flow);
 
-	if (maxFlow != demand)
-	{
+	// b' == b?
+	if (maxFlow != demand) {
 		cerr << "Kein zulässiger b-Flow vorhanden." << endl;
 		return {};
 	}
@@ -420,7 +432,134 @@ vector<double> CostGraph::CycleCancelingAlg() {
 }
 
 vector<double> CostGraph::successiveShortestPathAlg() {
-	return { -1 };
+	vector<double> b(vertexCount, 0);
+	vector<double> flow(edges.size(), 0);
+
+	// satisfy negative edges
+	if (hasNegativeVals)
+		for (int e = 0; e < edges.size(); e++) {
+			CostEdge edge = edges[e];
+
+			if (edge.cost < 0)
+			{
+				b[edge.from] += edge.capacity;
+				b[edge.to] -= edge.capacity;
+				flow[e] = edge.capacity;
+			}
+		}
+
+	int source = vertexCount;
+	deque<int> sinks;
+
+	CostGraph g;
+
+	g.setVertexCount(vertexCount + 1);
+	g.addBalances(balances);
+	g.balances.push_back(0);
+	b.push_back(0);
+
+	// ursprüngliche Kanten übernehmen
+	for (const auto& e : edges)
+		g.addEdge(e);
+
+	double demand = 0;
+
+	for (int v = 0; v < vertexCount; ++v)
+	{
+		// Super-Source
+		if (balances[v] - b[v] > 0)
+		{
+			g.addEdge({ source, v, 0, balances[v] - b[v] });
+			flow.push_back(0);
+			g.balances[source] += balances[v] - b[v];
+		}
+		// remember all sinks
+		else if (balances[v] - b[v] < 0)
+		{
+			sinks.push_back(v);
+			demand += abs(balances[v] - b[v]);
+		}
+	}
+
+	if (g.balances[source] != demand)
+		return {};
+
+	do {
+		int sink = sinks.front();
+		sinks.pop_front();
+
+		// test if all sinks are reachable
+		vector<int> pathEdge(g.vertexCount, -1);
+		CostGraph* residualGraph = g.makeResidualGraph(flow);
+		residualGraph->bfs(source, pathEdge, sink);
+
+		vector<int> path;
+		// sink not reachable
+		if (pathEdge[sink] == -1)
+			return { -1 };
+		// sink reachable
+		else {
+			//s,t-Path
+			if (!residualGraph->mooreBellmanFordAlg(source, sink, nullptr, &path))
+				return {};
+			double gamma = numeric_limits<double>::infinity();
+			vector<tuple<int, int>> gPath;
+
+			for (int p : path) {
+				//Find corresponding edges
+				CostEdge edge = residualGraph->edges[p];
+				bool found = false;
+
+				for (auto a : g.adjacencyList[edge.from])
+				{
+					if (g.edges[a].to == edge.to)
+					{
+						gPath.push_back(make_tuple(a, 1));
+						found = true;
+						break;
+					}
+				}
+
+				if (!found)
+				{
+					for (auto a : g.adjacencyList[edge.to])
+					{
+						if (g.edges[a].to == edge.from)
+						{
+							gPath.push_back(make_tuple(a, -1));
+							break;
+						}
+					}
+				}
+
+				gamma = min(gamma, edge.capacity);
+			}
+
+			gamma = min(gamma, min(g.balances[source] - b[source], abs(g.balances[sink] - b[sink])));
+
+			if (gamma == 0)
+				break;
+
+			b[source] += gamma;
+			b[sink] -= gamma;
+
+			for (auto p : gPath) {
+				int vert = get<0>(p);
+				flow[vert] += gamma * get<1>(p);
+			}
+		}
+
+		if (balances[sink] != b[sink])
+			sinks.push_back(sink);
+
+	} while (!sinks.empty() && g.balances[source] != b[source]);
+
+	//clean up flow
+	for (int i = flow.size(); i > edges.size(); i--) {
+		flow.pop_back();
+	}
+
+	return flow;
 }
 
 double CostGraph::getCost(vector<double>& flow) {
